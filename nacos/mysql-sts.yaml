@@ -1,0 +1,98 @@
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: nacos-mysql
+  namespace: zdevops
+  labels:
+    app: nacos-mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nacos-mysql
+  template:
+    metadata:
+      labels:
+        app: nacos-mysql
+    spec:
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ''
+        - name: config
+          configMap:
+            name: nacos-mysql-config
+            items:
+              - key: custom.cnf
+                path: custom.cnf
+            defaultMode: 420
+      containers:
+        - name: nacos-mysql
+          image: 'registry.zdevops.com.cn/library/mysql:5.7.38'
+          ports:
+            - name: tcp-3306
+              containerPort: 3306
+              protocol: TCP
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nacos-mysql-secret
+                  key: MYSQL_PASSWORD
+            - name: MYSQL_DATABASE
+              value: "nacos"
+            - name: MYSQL_USER
+              value: "nacos" 
+          resources:
+            limits:
+              cpu: '2'
+              memory: 4000Mi
+            requests:
+              cpu: 100m
+              memory: 500Mi
+          volumeMounts:
+            - name: host-time
+              mountPath: /etc/localtime
+            - name: data
+              mountPath: /var/lib/mysql
+            - name: config
+              mountPath: /etc/mysql/conf.d/custom.cnf
+              subPath: custom.cnf
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        namespace: zdevops
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: glusterfs
+  serviceName: mysql-headless
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: nacos-mysql-headless
+  namespace: zdevops
+  labels:
+    app: nacos-mysql
+spec:
+  ports:
+    - name: tcp-3306
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: nacos-mysql
+  clusterIP: None
+  type: ClusterIP

@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nacos-config
+  namespace: zdevops
+data:
+  mysql.host: "nacos-mysql-external.zdevops"
+  mysql.db.name: "nacos"
+  mysql.port: "3306"
+  mysql.user: "nacos"
+  mysql.password: "P@88w0rd"

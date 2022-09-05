@@ -1,0 +1,89 @@
+---
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: mysql
+  namespace: lstack
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      volumes:
+        - name: host-time
+          hostPath:
+            path: /etc/localtime
+            type: ''
+        - name: volume-cnf
+          configMap:
+            name: mysql-cnf
+            items:
+              - key: custom.cnf
+                path: custom.cnf
+            defaultMode: 420
+      containers:
+        - name: lstack-mysql
+          image: 'mysql:5.7.38'
+          ports:
+            - name: tcp-mysql
+              containerPort: 3306
+              protocol: TCP
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+          resources:
+            limits:
+              cpu: '2'
+              memory: 4000Mi
+            requests:
+              cpu: 500m
+              memory: 500Mi
+          volumeMounts:
+            - name: host-time
+              mountPath: /etc/localtime
+            - name: data
+              mountPath: /var/lib/mysql
+            - name: volume-cnf
+              mountPath: /etc/mysql/conf.d/custom.cnf
+              subPath: custom.cnf
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        namespace: lstack
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: glusterfs
+  serviceName: mysql-headless
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: mysql-headless
+  namespace: lstack
+  labels:
+    app: mysql
+spec:
+  ports:
+    - name: tcp-mysql
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+  clusterIP: None
+  type: ClusterIP

@@ -1,0 +1,99 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: zdevops
+  labels:
+    app: redis
+spec:
+  serviceName: redis-headless
+  replicas: 6
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - redis
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: redis
+          image: 'registry.zdevops.com.cn/library/redis:6.2.7'
+          command:
+            - "redis-server"
+          args:
+            - "/etc/redis/redis.conf"
+            - "--protected-mode"
+            - "no"
+            - "--cluster-announce-ip"
+            - "$(POD_IP)"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          ports:
+            - name: redis-6379
+              containerPort: 6379
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/redis
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              cpu: '2'
+              memory: 4000Mi
+            requests:
+              cpu: 100m
+              memory: 500Mi
+      volumes:
+        - name: config
+          configMap:
+            name: redis-cluster-config
+            items:
+              - key: redis-config
+                path: redis.conf
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        namespace: zdevops
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: "glusterfs"
+        resources:
+          requests:
+            storage: 5Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-headless
+  namespace: zdevops
+  labels:
+    app: redis
+spec:
+  ports:
+    - name: redis-6379
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+  selector:
+    app: redis
+  clusterIP: None
+  type: ClusterIP

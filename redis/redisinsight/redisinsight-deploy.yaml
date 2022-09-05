@@ -1,0 +1,51 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redisinsight
+  namespace: zdevops
+  labels:
+    app: redisinsight
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redisinsight
+  template:
+    metadata:
+      labels:
+        app: redisinsight
+    spec:
+      containers:
+        - name: redisinsight
+          image: registry.zdevops.com.cn/library/redisinsight:1.12.0
+          ports:
+            - name: tcp-8001
+              containerPort: 8001
+              protocol: TCP
+          resources:
+            limits:
+              cpu: '2'
+              memory: 4000Mi
+            requests:
+              cpu: 100m
+              memory: 500Mi
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: redisinsight-external
+  namespace: zdevops
+  labels:
+    app: redisinsight-external
+spec:
+  ports:
+    - name: tcp-8001
+      protocol: TCP
+      port: 8001
+      targetPort: 8001
+      nodePort: 31000
+  selector:
+    app: redisinsight
+  type: NodePort

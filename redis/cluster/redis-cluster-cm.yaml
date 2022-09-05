@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-cluster-config
+  namespace: zdevops
+data:
+  redis-config: |
+    appendonly yes
+    protected-mode no
+    dir /data
+    port 6379
+    cluster-enabled yes
+    cluster-config-file /data/nodes.conf
+    cluster-node-timeout 5000
+    masterauth redis@abc.com
+    requirepass redis@abc.com

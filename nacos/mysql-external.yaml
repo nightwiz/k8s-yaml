@@ -1,0 +1,17 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: nacos-mysql-external
+  namespace: zdevops
+  labels:
+    app: nacos-mysql-external
+spec:
+  ports:
+    - name: tcp-mysql-external
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+      nodePort: 31006
+  selector:
+    app: nacos-mysql
+  type: NodePort
